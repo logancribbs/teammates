@@ -289,12 +289,8 @@ export class InstructorCourseEditPageComponent implements OnInit {
     })
         .subscribe({
           next: (resp: Instructors) => {
-            this.instructorDetailPanels = resp.instructors.map((i: Instructor) => ({
-              originalInstructor: { ...i },
-              originalPanel: this.getInstructorEditPanelModel(i),
-              editPanel: this.getInstructorEditPanelModel(i),
-              isSavingInstructorEdit: false,
-            }));
+            this.instructorDetailPanels = resp.instructors.map((i: Instructor) =>
+              this.buildInstructorDetailPanel(i));
             this.instructorDetailPanels.forEach((panel: InstructorEditPanelDetail) => {
               this.loadPermissionForInstructor(panel);
             });
@@ -343,6 +339,70 @@ export class InstructorCourseEditPageComponent implements OnInit {
       },
 
       isEditing: false,
+      isSavingInstructorEdit: false,
+    };
+  }
+
+  /**
+   * Builds the detail panel model for an instructor.
+   */
+  private buildInstructorDetailPanel(instructor: Instructor): InstructorEditPanelDetail {
+    const panel: InstructorEditPanel = this.getInstructorEditPanelModel(instructor);
+
+    return {
+      originalInstructor: { ...instructor },
+      originalPanel: panel,
+      editPanel: this.getInstructorEditPanelModel(instructor),
+    };
+  }
+
+  /**
+   * Builds a course tab model for instructor copy flow.
+   */
+  private buildCourseTabModel(course: Course, isArchived: boolean): CourseTabModel {
+    return {
+      courseId: course.courseId,
+      courseName: course.courseName,
+      creationTimestamp: course.creationTimestamp,
+      isArchived,
+      instructorCandidates: [],
+      instructorCandidatesSortBy: SortBy.NONE,
+      instructorCandidatesSortOrder: SortOrder.ASC,
+      hasInstructorsLoaded: false,
+      isTabExpanded: false,
+      hasLoadingFailed: false,
+    };
+  }
+
+  /**
+   * Resets the new instructor panel after successful creation.
+   */
+  private resetNewInstructorPanel(): void {
+    this.newInstructorPanel = {
+      googleId: '',
+      courseId: '',
+      email: '',
+      isDisplayedToStudents: true,
+      displayedToStudentsAs: '',
+      name: '',
+      role: InstructorPermissionRole.INSTRUCTOR_PERMISSION_ROLE_COOWNER,
+      joinState: JoinState.NOT_JOINED,
+
+      permission: {
+        privilege: {
+          canModifyCourse: true,
+          canModifySession: true,
+          canModifyStudent: true,
+          canModifyInstructor: true,
+          canViewStudentInSections: true,
+          canModifySessionCommentsInSections: true,
+          canViewSessionInSections: true,
+          canSubmitSessionInSections: true,
+        },
+        sectionLevel: [],
+      },
+
+      isEditing: true,
       isSavingInstructorEdit: false,
     };
   }
@@ -510,11 +570,7 @@ export class InstructorCourseEditPageComponent implements OnInit {
         }))
         .subscribe({
           next: (resp: Instructor) => {
-            const newDetailPanels: InstructorEditPanelDetail = {
-              originalInstructor: { ...resp },
-              originalPanel: this.getInstructorEditPanelModel(resp),
-              editPanel: this.getInstructorEditPanelModel(resp),
-            };
+            const newDetailPanels: InstructorEditPanelDetail = this.buildInstructorDetailPanel(resp);
             newDetailPanels.editPanel.permission = this.newInstructorPanel.permission;
             newDetailPanels.originalPanel = JSON.parse(JSON.stringify(newDetailPanels.editPanel));
 
@@ -525,33 +581,7 @@ export class InstructorCourseEditPageComponent implements OnInit {
             this.updatePrivilegeForInstructor(newDetailPanels.originalInstructor, newDetailPanels.editPanel.permission);
 
             this.isAddingNewInstructor = false;
-            this.newInstructorPanel = {
-              googleId: '',
-              courseId: '',
-              email: '',
-              isDisplayedToStudents: true,
-              displayedToStudentsAs: '',
-              name: '',
-              role: InstructorPermissionRole.INSTRUCTOR_PERMISSION_ROLE_COOWNER,
-              joinState: JoinState.NOT_JOINED,
-
-              permission: {
-                privilege: {
-                  canModifyCourse: true,
-                  canModifySession: true,
-                  canModifyStudent: true,
-                  canModifyInstructor: true,
-                  canViewStudentInSections: true,
-                  canModifySessionCommentsInSections: true,
-                  canViewSessionInSections: true,
-                  canSubmitSessionInSections: true,
-                },
-                sectionLevel: [],
-              },
-
-              isEditing: true,
-              isSavingInstructorEdit: false,
-            };
+            this.resetNewInstructorPanel();
           },
           error: (resp: ErrorMessageOutput) => {
             this.statusMessageService.showErrorToast(resp.error.message);
@@ -701,36 +731,12 @@ export class InstructorCourseEditPageComponent implements OnInit {
 
         activeCourses.courses.forEach((course: Course) => {
           if (course.courseId !== this.courseId && course.institute === this.courseFormModel.course.institute) {
-            const model: CourseTabModel = {
-              courseId: course.courseId,
-              courseName: course.courseName,
-              creationTimestamp: course.creationTimestamp,
-              isArchived: false,
-              instructorCandidates: [],
-              instructorCandidatesSortBy: SortBy.NONE,
-              instructorCandidatesSortOrder: SortOrder.ASC,
-              hasInstructorsLoaded: false,
-              isTabExpanded: false,
-              hasLoadingFailed: false,
-            };
-            courseTabModels.push(model);
+            courseTabModels.push(this.buildCourseTabModel(course, false));
           }
         });
         archivedCourses.courses.forEach((course: Course) => {
           if (course.courseId !== this.courseId && course.institute === this.courseFormModel.course.institute) {
-            const model: CourseTabModel = {
-              courseId: course.courseId,
-              courseName: course.courseName,
-              creationTimestamp: course.creationTimestamp,
-              isArchived: true,
-              instructorCandidates: [],
-              instructorCandidatesSortBy: SortBy.NONE,
-              instructorCandidatesSortOrder: SortOrder.ASC,
-              hasInstructorsLoaded: false,
-              isTabExpanded: false,
-              hasLoadingFailed: false,
-            };
-            courseTabModels.push(model);
+            courseTabModels.push(this.buildCourseTabModel(course, true));
           }
         });
       },
@@ -785,11 +791,7 @@ export class InstructorCourseEditPageComponent implements OnInit {
       }),
     ).subscribe({
       next: (newInstructor: Instructor) => {
-        const newDetailPanels: InstructorEditPanelDetail = {
-          originalInstructor: { ...newInstructor },
-          originalPanel: this.getInstructorEditPanelModel(newInstructor),
-          editPanel: this.getInstructorEditPanelModel(newInstructor),
-        };
+        const newDetailPanels: InstructorEditPanelDetail = this.buildInstructorDetailPanel(newInstructor);
         newDetailPanels.editPanel.permission = this.newInstructorPanel.permission;
         newDetailPanels.originalPanel = JSON.parse(JSON.stringify(newDetailPanels.editPanel));
 

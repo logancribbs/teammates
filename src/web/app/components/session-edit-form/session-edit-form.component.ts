@@ -197,6 +197,34 @@ export class SessionEditFormComponent {
   }
 
   /**
+   * Gets the current moment in the model time zone.
+   */
+  private getCurrentMoment(): moment.Moment {
+    return moment().tz(this.model.timeZone);
+  }
+
+  /**
+   * Gets a moment offset from now in the model time zone.
+   */
+  private getOffsetMoment(amount: number, unit: moment.unitOfTime.DurationConstructor): moment.Moment {
+    return this.getCurrentMoment().add(amount, unit);
+  }
+
+  /**
+   * Gets the submission opening datetime from the current model.
+   */
+  private getSubmissionStartDateTime(): moment.Moment {
+    const submissionStartDate: moment.Moment =
+        this.datetimeService.getMomentInstanceFromDate(this.model.submissionStartDate);
+    const submissionStartTime: moment.Moment =
+        this.datetimeService.getMomentInstanceFromTime(this.model.submissionStartTime);
+
+    return submissionStartDate.clone()
+        .hours(submissionStartTime.hour())
+        .minutes(submissionStartTime.minute());
+  }
+
+  /**
    * Triggers the change of the model when the submission opening date changes.
    */
   triggerSubmissionOpeningDateModelChange(field: string, date: DateFormat): void {
@@ -282,7 +310,7 @@ export class SessionEditFormComponent {
    * <p> The minimum session opening datetime is 2 hours before now.
    */
   get minDateForSubmissionStart(): DateFormat {
-    const twoHoursBeforeNow = moment().tz(this.model.timeZone).subtract(2, 'hours');
+    const twoHoursBeforeNow = this.getOffsetMoment(-2, 'hours');
     return this.datetimeService.getDateInstance(twoHoursBeforeNow);
   }
 
@@ -292,7 +320,7 @@ export class SessionEditFormComponent {
    * <p> The minimum session opening datetime is 2 hours before now.
    */
   get minTimeForSubmissionStart(): TimeFormat {
-    const twoHoursBeforeNow = moment().tz(this.model.timeZone).subtract(2, 'hours');
+    const twoHoursBeforeNow = this.getOffsetMoment(-2, 'hours');
     return this.datetimeService.getTimeInstance(twoHoursBeforeNow);
   }
 
@@ -302,7 +330,7 @@ export class SessionEditFormComponent {
    * <p> The maximum session opening datetime is 12 months from now.
    */
   get maxDateForSubmissionStart(): DateFormat {
-    const twelveMonthsFromNow = moment().tz(this.model.timeZone).add(12, 'months');
+    const twelveMonthsFromNow = this.getOffsetMoment(12, 'months');
     return this.datetimeService.getDateInstance(twelveMonthsFromNow);
   }
 
@@ -323,7 +351,7 @@ export class SessionEditFormComponent {
   get minDateForSubmissionEnd(): DateFormat {
     const submissionStartDate: moment.Moment =
         this.datetimeService.getMomentInstanceFromDate(this.model.submissionStartDate);
-    const oneHourBeforeNow = moment().tz(this.model.timeZone).subtract(1, 'hours');
+    const oneHourBeforeNow = this.getOffsetMoment(-1, 'hours');
 
     return submissionStartDate.isAfter(oneHourBeforeNow)
         ? this.model.submissionStartDate
@@ -336,16 +364,8 @@ export class SessionEditFormComponent {
    * <p> The minimum session closing datetime is on session opening datetime or 1 hour before now, whichever is later.
    */
   get minTimeForSubmissionEnd(): TimeFormat {
-    const submissionStartDate: moment.Moment =
-        this.datetimeService.getMomentInstanceFromDate(this.model.submissionStartDate);
-    const submissionStartTime: moment.Moment =
-        this.datetimeService.getMomentInstanceFromTime(this.model.submissionStartTime);
-
-    const submissionStartDateTime: moment.Moment = submissionStartDate.clone()
-    .hours(submissionStartTime.hour())
-    .minutes(submissionStartTime.minute());
-
-    const oneHourBeforeNow = moment().tz(this.model.timeZone).subtract(1, 'hours');
+    const submissionStartDateTime: moment.Moment = this.getSubmissionStartDateTime();
+    const oneHourBeforeNow = this.getOffsetMoment(-1, 'hours');
 
     if (submissionStartDateTime.isAfter(oneHourBeforeNow)) {
       return this.datetimeService.getTimeInstance(submissionStartDateTime);
@@ -359,7 +379,7 @@ export class SessionEditFormComponent {
    * <p> The maximum session closing datetime is 12 months from now.
    */
   get maxDateForSubmissionEnd(): DateFormat {
-    const twelveMonthsFromNow = moment().tz(this.model.timeZone).add(12, 'months');
+    const twelveMonthsFromNow = this.getOffsetMoment(12, 'months');
     return this.datetimeService.getDateInstance(twelveMonthsFromNow);
   }
 
@@ -383,22 +403,22 @@ export class SessionEditFormComponent {
     return this.datetimeService.getDateInstance(thirtyDaysBeforeSubmissionStartDate);
   }
 
-  /**
-   * Gets the minimum time for a session to be visible based on the input model.
-   *
-   * <p> The minimum session visible datetime is 30 days before session opening datetime.
-   */
-  get minTimeForSessionVisible(): TimeFormat {
-    const submissionStartDate: moment.Moment =
-        this.datetimeService.getMomentInstanceFromDate(this.model.submissionStartDate);
-    const submissionStartTime: moment.Moment =
-        this.datetimeService.getMomentInstanceFromTime(this.model.submissionStartTime);
-    const submissionStartDateTime: moment.Moment =
-        submissionStartDate.add(submissionStartTime.hour()).add(submissionStartTime.minute());
-    const thirtyDaysBeforeSubmissionStartDateTime: moment.Moment =
-        submissionStartDateTime.subtract(30, 'days');
-    return this.datetimeService.getTimeInstance(thirtyDaysBeforeSubmissionStartDateTime);
-  }
+ /**
+ * Gets the minimum time for a session to be visible based on the input model.
+ *
+ * <p> The minimum session visible datetime is 30 days before session opening datetime.
+ */
+get minTimeForSessionVisible(): TimeFormat {
+  const submissionStartDate: moment.Moment =
+      this.datetimeService.getMomentInstanceFromDate(this.model.submissionStartDate);
+  const submissionStartTime: moment.Moment =
+      this.datetimeService.getMomentInstanceFromTime(this.model.submissionStartTime);
+  const submissionStartDateTime: moment.Moment =
+      submissionStartDate.add(submissionStartTime.hour()).add(submissionStartTime.minute());
+  const thirtyDaysBeforeSubmissionStartDateTime: moment.Moment =
+      submissionStartDateTime.subtract(30, 'days');
+  return this.datetimeService.getTimeInstance(thirtyDaysBeforeSubmissionStartDateTime);
+}
 
   /**
    * Gets the maximum date for a session to be visible based on the input model.
